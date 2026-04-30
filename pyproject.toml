@@ -1,0 +1,25 @@
+[project]
+name = "opengl-explosion"
+version = "0.0.1"
+description = ""
+requires-python = ">=3.14"
+dependencies = [
+    "glfw>=2.10.0",
+    "numpy>=2.4.4",
+    "pyassimp>=5.2.5",
+    "pyglm>=2.8.3",
+    "pyopengl>=3.1.10",
+    "setuptools",
+]
+
+[project.scripts]
+view-model = "opengl_explosion.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]
