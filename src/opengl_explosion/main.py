@@ -21,8 +21,10 @@ class ViewerApp:
         self.first_mouse = True
         self.delta_time = 0.0
         self.last_frame = 0.0
+        self.elapsed_time = 0.0
+        self.cycle_delay = 3.0
 
-    def mouse_callback(self, xpos: float, ypos: float) -> None:
+    def mouse_callback(self, window: Any, xpos: float, ypos: float) -> None:
         if self.first_mouse:
             self.last_x = xpos
             self.last_y = ypos
@@ -80,17 +82,27 @@ class ViewerApp:
         shader_program = create_shader_program()
         model = Model(self.model_path)
 
+        glUseProgram(shader_program)
+
+        u_time_loc = glGetUniformLocation(shader_program, "u_time")
+        u_gravity_loc = glGetUniformLocation(shader_program, "u_gravity")
+        u_intensity_loc = glGetUniformLocation(shader_program, "u_intensity")
+        u_explosion_origin_loc = glGetUniformLocation(shader_program, "u_explosion_origin")
+
+        glUniform1f(u_gravity_loc, 9.8)
+        glUniform1i(u_intensity_loc, 10)
+        glUniform3f(u_explosion_origin_loc, 0.0, 0.0, 0.0)
+
         while not glfw.window_should_close(window):
             current_frame = glfw.get_time()
             self.delta_time = current_frame - self.last_frame
             self.last_frame = current_frame
+            self.elapsed_time += self.delta_time
 
             self.process_input(window)
 
             glClearColor(0.1, 0.1, 0.1, 1.0)
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)  # type: ignore
-
-            glUseProgram(shader_program)
 
             projection = glm.perspective(
                 glm.radians(45.0), WINDOW_WIDTH / WINDOW_HEIGHT, 0.1, 1000.0
@@ -106,6 +118,10 @@ class ViewerApp:
             glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm.value_ptr(projection))
             glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model_matrix))
+
+            cycle_time = self.elapsed_time % 6.0
+            time_with_delay = max(0.0, cycle_time - self.cycle_delay)
+            glUniform1f(u_time_loc, time_with_delay)
 
             model.draw()
 
