@@ -5,7 +5,7 @@ out vec4 FragColor;
 in vec3 Normal;
 
 uniform vec3 meshColor = vec3(0.2, 0.5, 0.8);
-uniform vec3 lightDir = normalize(vec3(-7.5, 4.0, -7.0));
+uniform vec3 lightDir = normalize(vec3(7.5, 4.0, 7.0));
 
 void main() {
     vec3 N = normalize(Normal);
