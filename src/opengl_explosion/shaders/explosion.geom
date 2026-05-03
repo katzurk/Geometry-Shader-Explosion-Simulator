@@ -17,13 +17,14 @@ uniform mat4 view;
 vec3 getNormal() {
     vec3 a = vec3(gl_in[0].gl_Position) - vec3(gl_in[1].gl_Position);
     vec3 b = vec3(gl_in[2].gl_Position) - vec3(gl_in[1].gl_Position);
-    return normalize(cross(a, b));
+    return normalize(cross(b, a));
 }
 
 vec3 explode(vec3 v, vec3 center) {
     float t = max(0.0, u_time);
+    vec3 normal = getNormal();
 
-    vec3 dir = normalize(center - u_explosion_origin);
+    vec3 dir = normalize(center - u_explosion_origin + 0.2 * normal);
     float speed = float(u_intensity);
     vec3 acc = vec3(0.0, u_gravity, 0.0);
 
