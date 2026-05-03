@@ -59,8 +59,20 @@ class Model:
         print(f"Loading model from {path}...")
         try:
             with pyassimp.load(path) as scene:
+                all_vertices = []
+                for mesh in scene.meshes:
+                    verts = np.array(mesh.vertices, dtype=np.float32)
+                    all_vertices.append(verts)
+
+                all_vertices = np.vstack(all_vertices)
+
+                min_v = np.min(all_vertices, axis=0)
+                max_v = np.max(all_vertices, axis=0)
+                center = (min_v + max_v) * 0.5
+
                 for mesh in scene.meshes:
                     vertices = np.array(mesh.vertices, dtype=np.float32)
+                    vertices -= center
 
                     if len(mesh.normals) > 0:
                         normals = np.array(mesh.normals, dtype=np.float32)
