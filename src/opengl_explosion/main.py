@@ -6,7 +6,7 @@ from typing import Any
 
 from opengl_explosion.camera import Camera, Direction
 from opengl_explosion.loader import Model
-from opengl_explosion.shader import create_shader_program
+from opengl_explosion.shader import ShaderProgram
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
@@ -23,6 +23,13 @@ class ViewerApp:
         self.last_frame = 0.0
         self.elapsed_time = 0.0
         self.cycle_delay = 3.0
+
+        self.gravity = 25.0
+        self.intensity = 20
+        self.explosion_origin = (0.0, -0.2, 0.0)
+        self.explosion_dir = (10.0, 2.0, 0.0)
+        self.noise_strength = 0.4
+        self.radial_ratio = 0.0
 
     def mouse_callback(self, window: Any, xpos: float, ypos: float) -> None:
         if self.first_mouse:
@@ -79,19 +86,20 @@ class ViewerApp:
 
         glEnable(GL_DEPTH_TEST)
 
-        shader_program = create_shader_program()
+        shader_program = ShaderProgram.from_files(
+            "explosion.vert",
+            "explosion.geom",
+            "explosion.frag",
+        )
         model = Model(self.model_path)
 
-        glUseProgram(shader_program)
-
-        u_time_loc = glGetUniformLocation(shader_program, "u_time")
-        u_gravity_loc = glGetUniformLocation(shader_program, "u_gravity")
-        u_intensity_loc = glGetUniformLocation(shader_program, "u_intensity")
-        u_explosion_origin_loc = glGetUniformLocation(shader_program, "u_explosion_origin")
-
-        glUniform1f(u_gravity_loc, 9.8)
-        glUniform1i(u_intensity_loc, 10)
-        glUniform3f(u_explosion_origin_loc, 0.0, 0.0, 0.0)
+        shader_program.use()
+        shader_program.set_gravity(self.gravity)
+        shader_program.set_intensity(self.intensity)
+        shader_program.set_explosion_origin(self.explosion_origin)
+        shader_program.set_explosion_dir(self.explosion_dir)
+        shader_program.set_noise_strength(self.noise_strength)
+        shader_program.set_radial_ratio(self.radial_ratio)
 
         while not glfw.window_should_close(window):
             current_frame = glfw.get_time()
@@ -111,17 +119,14 @@ class ViewerApp:
 
             model_matrix = glm.mat4(1.0)
 
-            proj_loc = glGetUniformLocation(shader_program, "projection")
-            view_loc = glGetUniformLocation(shader_program, "view")
-            model_loc = glGetUniformLocation(shader_program, "model")
-
-            glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm.value_ptr(projection))
-            glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
-            glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model_matrix))
+            shader_program.set_projection(projection)
+            shader_program.set_view(view)
+            shader_program.set_model(model_matrix)
 
             cycle_time = self.elapsed_time % 6.0
             time_with_delay = max(0.0, cycle_time - self.cycle_delay)
-            glUniform1f(u_time_loc, time_with_delay)
+            shader_program.set_time(time_with_delay)
+            shader_program.set_radial_ratio(self.radial_ratio)
 
             model.draw()
 
