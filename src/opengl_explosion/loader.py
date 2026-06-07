@@ -10,13 +10,21 @@ class Mesh:
         vertices: npt.NDArray[np.float32],
         normals: npt.NDArray[np.float32],
         indices: npt.NDArray[np.uint32],
+        offsets: npt.NDArray[np.float32] = None, # Przesunięcia instancji
     ) -> None:
         self.vertices = vertices
         self.normals = normals
         self.indices = indices
+
+        if offsets is None:
+            offsets = np.array([[0.0, 0.0, 0.0]], dtype=np.float32)
+        self.offsets = offsets
+        self.instance_count = len(offsets)
+
         self.vao = glGenVertexArrays(1)
         self.vbo_v = glGenBuffers(1)
         self.vbo_n = glGenBuffers(1)
+        self.vbo_effset = glGenBuffers(1) # Bufor na instancing
         self.ebo = glGenBuffers(1)
 
         glBindVertexArray(self.vao)
@@ -35,6 +43,13 @@ class Mesh:
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(1)
 
+        # offsets
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_n)
+        glBufferData(GL_ARRAY_BUFFER, self.offsets.nbytes, self.offsets, GL_STATIC_DRAW)
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glEnableVertexAttribArray(2)
+        glVertexAttribDivisor(2, 1)
+
         # indices
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.ebo)
         glBufferData(
@@ -46,13 +61,14 @@ class Mesh:
 
     def draw(self) -> None:
         glBindVertexArray(self.vao)
-        glDrawElements(GL_TRIANGLES, self.index_count, GL_UNSIGNED_INT, None)
+        glDrawElementsInstanced(GL_TRIANGLES, self.index_count, GL_UNSIGNED_INT, None, self.instance_count)
         glBindVertexArray(0)
 
 
 class Model:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, offsets: npt.NDArray[np.float32] = None) -> None:
         self.meshes: list[Mesh] = []
+        self.offsets = offsets
         self.load_model(path)
 
     def load_model(self, path: str) -> None:
@@ -82,7 +98,7 @@ class Model:
                         normals[:, 1] = 1.0
 
                     indices = np.array(mesh.faces, dtype=np.uint32).flatten()
-                    self.meshes.append(Mesh(vertices, normals, indices))
+                    self.meshes.append(Mesh(vertices, normals, indices, self.offsets))
             print(f"Loaded {len(self.meshes)} meshes.")
         except Exception as e:
             print(f"Failed to load model {path}: {e}")

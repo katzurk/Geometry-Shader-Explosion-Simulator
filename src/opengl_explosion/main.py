@@ -3,6 +3,7 @@ from OpenGL.GL import *  # type: ignore
 import glm
 import sys
 from typing import Any
+import numpy as np
 
 from opengl_explosion.camera import Camera, Direction
 from opengl_explosion.loader import Model
@@ -30,6 +31,18 @@ class ViewerApp:
         self.explosion_dir = (10.0, 2.0, 0.0)
         self.noise_strength = 0.4
         self.radial_ratio = 0.0
+
+        self.offsets = self.generate_offsets(grid_size=10, spacing=4.0)
+
+    def generate_offsets(self, grid_size: int, spacing: float) -> np.ndarray:
+        offsets = []
+        offset_start = (grid_size - 1) * spacing / 2.0
+        for x in range(grid_size):
+            for z in range(grid_size):
+                pos_x = x * spacing - offset_start
+                pos_z = z * spacing - offset_start
+                offsets.append([pos_x, 0.0, pos_z])
+        return np.array(offsets, dtype=np.float32)
 
     def mouse_callback(self, window: Any, xpos: float, ypos: float) -> None:
         if self.first_mouse:
@@ -91,7 +104,7 @@ class ViewerApp:
             "explosion.geom",
             "explosion.frag",
         )
-        model = Model(self.model_path)
+        model = Model(self.model_path, self.offsets)
 
         shader_program.use()
         shader_program.set_gravity(self.gravity)
