@@ -24,7 +24,7 @@ class Mesh:
         self.vao = glGenVertexArrays(1)
         self.vbo_v = glGenBuffers(1)
         self.vbo_n = glGenBuffers(1)
-        self.vbo_effset = glGenBuffers(1) # Bufor na instancing
+        self.vbo_offset = glGenBuffers(1) # Bufor na instancing
         self.ebo = glGenBuffers(1)
 
         glBindVertexArray(self.vao)
@@ -44,7 +44,7 @@ class Mesh:
         glEnableVertexAttribArray(1)
 
         # offsets
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_n)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo_offset)
         glBufferData(GL_ARRAY_BUFFER, self.offsets.nbytes, self.offsets, GL_STATIC_DRAW)
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, None)
         glEnableVertexAttribArray(2)
