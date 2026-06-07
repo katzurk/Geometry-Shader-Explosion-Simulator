@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from PyQt6.QtGui import QSurfaceFormat
 
 from opengl_explosion.camera import Camera, Direction
 from opengl_explosion.loader import Model
@@ -445,6 +446,11 @@ def main() -> None:
     model_path = ""
     if len(sys.argv) >= 2:
         model_path = sys.argv[1]
+
+    fmt = QSurfaceFormat()
+    fmt.setVersion(4, 0)
+    fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
+    QSurfaceFormat.setDefaultFormat(fmt)
 
     # enable high-DPI scaling
     QApplication.setHighDpiScaleFactorRoundingPolicy(

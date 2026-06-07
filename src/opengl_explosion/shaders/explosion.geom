@@ -1,6 +1,6 @@
-#version 330 core
+#version 400 core
 
-layout (triangles) in;
+layout (triangles, invocations = 4) in;
 layout (triangle_strip, max_vertices = 3) out;
 
 in vec3 vNormal[];
@@ -89,12 +89,12 @@ mat3 rotationMatrix(vec3 axis, float angle) {
 }
 
 // Explosion
-vec3 explode(vec3 v, vec3 center, vec3 vertexNormal, out vec3 rotatedNormal) {
+vec3 explode(vec3 v, vec3 center, vec3 vertexNormal, vec3 idOffset, out vec3 rotatedNormal) {
     float t = max(0.0, u_time);
     vec3 normal = getNormal();
 
     // Direction
-    vec3 radial = safeNormalize(center - u_explosion_origin);
+    vec3 radial = safeNormalize(center - u_explosion_origin + idOffset);
     vec3 baseDir = radial;
     if (length(u_explosion_dir) > 1e-5) {
         baseDir = safeNormalize(mix(safeNormalize(u_explosion_dir), radial, u_radial_ratio));
@@ -110,8 +110,8 @@ vec3 explode(vec3 v, vec3 center, vec3 vertexNormal, out vec3 rotatedNormal) {
     vec3 dir = safeNormalize(baseDir * 0.95 + normal * 0.05 + noise);
 
     // Speed
-    float speedNoise = 1.0 + 0.4 * snoise(center * 0.9) * u_noise_strength;
-    float speed = float(u_intensity) * speedNoise;
+    float speedNoise = 1.0 + 0.4 * snoise(center * 0.9 + idOffset) * u_noise_strength;
+    float speed = float(u_intensity) * speedNoise * (1.0 + float(gl_InvocationID) * 0.25);
 
     // Rotation
     vec3 rotAxis = safeNormalize(noise);
@@ -135,17 +135,19 @@ void main() {
     vec3 n1 = normalize(vNormal[1]);
     vec3 n2 = normalize(vNormal[2]);
 
+    vec3 idOffset = vec3(float(gl_InvocationID) * 7.3, float(gl_InvocationID) * -3.1, float(gl_InvocationID) * 5.8);
+
     vec3 outNormal;
 
-    gl_Position = projection * view * vec4(explode(gl_in[0].gl_Position.xyz, center, n0, outNormal), 1.0);
+    gl_Position = projection * view * vec4(explode(gl_in[0].gl_Position.xyz, center, n0, idOffset, outNormal), 1.0);
     Normal = outNormal;
     EmitVertex();
 
-    gl_Position = projection * view * vec4(explode(gl_in[1].gl_Position.xyz, center, n1, outNormal), 1.0);
+    gl_Position = projection * view * vec4(explode(gl_in[1].gl_Position.xyz, center, n1, idOffset, outNormal), 1.0);
     Normal = outNormal;
     EmitVertex();
 
-    gl_Position = projection * view * vec4(explode(gl_in[2].gl_Position.xyz, center, n2, outNormal), 1.0);
+    gl_Position = projection * view * vec4(explode(gl_in[2].gl_Position.xyz, center, n2, idOffset, outNormal), 1.0);
     Normal = outNormal;
     EmitVertex();
 
