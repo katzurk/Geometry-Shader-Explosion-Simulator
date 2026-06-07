@@ -1,6 +1,7 @@
 from enum import Enum, auto
-import glm
 from typing import Sequence, Union
+
+import glm
 
 
 class Direction(Enum):

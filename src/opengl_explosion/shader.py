@@ -1,16 +1,18 @@
 import os
 from typing import Any
 
-from OpenGL.GL import *
-from OpenGL.GL import shaders
 import glm
+from OpenGL.GL import *  # type: ignore
+from OpenGL.GL import shaders
 
 SHADER_DIR = os.path.join(os.path.dirname(__file__), "shaders")
+
 
 def load_shader_source(filename: str) -> str:
     path = os.path.join(SHADER_DIR, filename)
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
 
 class ShaderProgram:
     U_TIME = "u_time"
@@ -24,7 +26,12 @@ class ShaderProgram:
     U_VIEW = "view"
     U_MODEL = "model"
 
-    def __init__(self, vertex_source: str, geometry_source: str, fragment_source: str,) -> None:
+    def __init__(
+        self,
+        vertex_source: str,
+        geometry_source: str,
+        fragment_source: str,
+    ) -> None:
         self.program = shaders.compileProgram(
             shaders.compileShader(vertex_source, GL_VERTEX_SHADER),
             shaders.compileShader(geometry_source, GL_GEOMETRY_SHADER),
@@ -33,7 +40,9 @@ class ShaderProgram:
         self._uniform_cache: dict[str, int] = {}
 
     @classmethod
-    def from_files(cls, vertex_filename: str, geometry_filename: str, fragment_filename: str) -> "ShaderProgram":
+    def from_files(
+        cls, vertex_filename: str, geometry_filename: str, fragment_filename: str
+    ) -> "ShaderProgram":
         return cls(
             load_shader_source(vertex_filename),
             load_shader_source(geometry_filename),
