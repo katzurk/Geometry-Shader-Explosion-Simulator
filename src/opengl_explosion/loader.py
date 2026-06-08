@@ -1,7 +1,10 @@
-import pyassimp
-from OpenGL.GL import *  # type: ignore
+import ctypes
+import traceback
+
 import numpy as np
 import numpy.typing as npt
+import pyassimp
+from OpenGL.GL import *  # type: ignore
 
 
 class Mesh:
@@ -26,13 +29,13 @@ class Mesh:
         glBufferData(
             GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW
         )
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
         glEnableVertexAttribArray(0)
 
         # normals
         glBindBuffer(GL_ARRAY_BUFFER, self.vbo_n)
         glBufferData(GL_ARRAY_BUFFER, self.normals.nbytes, self.normals, GL_STATIC_DRAW)
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
         glEnableVertexAttribArray(1)
 
         # indices
@@ -46,7 +49,9 @@ class Mesh:
 
     def draw(self) -> None:
         glBindVertexArray(self.vao)
-        glDrawElements(GL_TRIANGLES, self.index_count, GL_UNSIGNED_INT, None)
+        glDrawElements(
+            GL_TRIANGLES, self.index_count, GL_UNSIGNED_INT, ctypes.c_void_p(0)
+        )
         glBindVertexArray(0)
 
 
@@ -85,6 +90,7 @@ class Model:
                     self.meshes.append(Mesh(vertices, normals, indices))
             print(f"Loaded {len(self.meshes)} meshes.")
         except Exception as e:
+            traceback.print_exc()
             print(f"Failed to load model {path}: {e}")
 
     def draw(self) -> None:
