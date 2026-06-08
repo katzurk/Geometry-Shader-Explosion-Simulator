@@ -133,6 +133,7 @@ class GLWidget(QOpenGLWidget):
         self.radial_ratio = 0.0
         self.cycle_delay = 3.0
         self.animation_speed = 1.0
+        self.fragmentation = 1
 
         self.last_frame_time = time.time()
         self.elapsed_time = 0.0
@@ -189,6 +190,7 @@ class GLWidget(QOpenGLWidget):
         self.shader_program.set_explosion_dir(tuple(self.explosion_dir))
         self.shader_program.set_noise_strength(self.noise_strength)
         self.shader_program.set_radial_ratio(self.radial_ratio)
+        self.shader_program.set_int("u_fragmentation", self.fragmentation)
 
         cycle_time = self.elapsed_time % 6.0
         time_with_delay = max(0.0, cycle_time - self.cycle_delay)
@@ -398,6 +400,11 @@ class MainWindow(QMainWindow):
                 "Anim Speed", 0.0, 5.0, self.gl_widget.animation_speed, self.set_speed
             )
         )
+        ui_layout.addWidget(
+            IntSlider(
+                "Multiplication", 1, 10, self.gl_widget.fragmentation, self.set_fragmentation
+            )
+        )
 
         ui_layout.addStretch()
 
@@ -440,6 +447,9 @@ class MainWindow(QMainWindow):
 
     def set_speed(self, val):
         self.gl_widget.animation_speed = val
+
+    def set_fragmentation(self, val):
+        self.gl_widget.fragmentation = val
 
 
 def main() -> None:

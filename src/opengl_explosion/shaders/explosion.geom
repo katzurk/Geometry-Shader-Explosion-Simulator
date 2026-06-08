@@ -1,7 +1,7 @@
 #version 400 core
 
-layout (triangles, invocations = 4) in;
-layout (triangle_strip, max_vertices = 3) out;
+layout (triangles, invocations = 10) in;
+layout (triangle_strip, max_vertices = 9) out;
 
 in vec3 vNormal[];
 out vec3 Normal;
@@ -16,6 +16,8 @@ uniform float u_radial_ratio;
 
 uniform mat4 projection;
 uniform mat4 view;
+
+uniform int u_fragmentation;
 
 vec3 getNormal() {
     vec3 a = vec3(gl_in[0].gl_Position) - vec3(gl_in[1].gl_Position);
@@ -129,27 +131,51 @@ vec3 explode(vec3 v, vec3 center, vec3 vertexNormal, vec3 idOffset, out vec3 rot
 }
 
 void main() {
-    vec3 center = (gl_in[0].gl_Position.xyz + gl_in[1].gl_Position.xyz + gl_in[2].gl_Position.xyz) / 3.0;
+    if (gl_InvocationID >= u_fragmentation) {
+        return;
+    }
+    vec3 a = gl_in[0].gl_Position.xyz;
+    vec3 b = gl_in[1].gl_Position.xyz;
+    vec3 c = gl_in[2].gl_Position.xyz;
+    vec3 center = (a + b + c) / 3.0;
 
     vec3 n0 = normalize(vNormal[0]);
     vec3 n1 = normalize(vNormal[1]);
     vec3 n2 = normalize(vNormal[2]);
 
+    // unique offset for every instance
     vec3 idOffset = vec3(float(gl_InvocationID) * 7.3, float(gl_InvocationID) * -3.1, float(gl_InvocationID) * 5.8);
-
     vec3 outNormal;
 
-    gl_Position = projection * view * vec4(explode(gl_in[0].gl_Position.xyz, center, n0, idOffset, outNormal), 1.0);
-    Normal = outNormal;
-    EmitVertex();
+    vec3 center1 = (a + b + center) / 3.0;
+    vec3 center2 = (b + c + center) / 3.0;
+    vec3 center3 = (c + a + center) / 3.0;
 
-    gl_Position = projection * view * vec4(explode(gl_in[1].gl_Position.xyz, center, n1, idOffset, outNormal), 1.0);
-    Normal = outNormal;
-    EmitVertex();
+    vec3 nc1 = normalize(n0 + n1);
+    vec3 nc2 = normalize(n1 + n2);
+    vec3 nc3 = normalize(n2 + n0);
 
-    gl_Position = projection * view * vec4(explode(gl_in[2].gl_Position.xyz, center, n2, idOffset, outNormal), 1.0);
-    Normal = outNormal;
-    EmitVertex();
+    gl_Position = projection * view * vec4(explode(a, center1, n0, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    gl_Position = projection * view * vec4(explode(b, center1, n1, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    gl_Position = projection * view * vec4(explode(center, center1, nc1, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    EndPrimitive();
 
+    gl_Position = projection * view * vec4(explode(b, center2, n1, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    gl_Position = projection * view * vec4(explode(c, center2, n2, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    gl_Position = projection * view * vec4(explode(center, center2, nc2, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    EndPrimitive();
+
+    gl_Position = projection * view * vec4(explode(c, center3, n2, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    gl_Position = projection * view * vec4(explode(a, center3, n0, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
+    gl_Position = projection * view * vec4(explode(center, center3, nc3, idOffset, outNormal), 1.0);
+    Normal = outNormal; EmitVertex();
     EndPrimitive();
 }
