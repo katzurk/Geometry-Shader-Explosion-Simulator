@@ -124,7 +124,7 @@ vec3 explode(vec3 v, vec3 center, vec3 vertexNormal, vec3 idOffset, out vec3 rot
 
     float scale = max(0.0, 1.0 - t * 0.4);
 
-    vec3 offset = (v - center) * rotMat * scale;
+    vec3 offset = rotMat * (v - center) * scale;
     rotatedNormal = rotMat * vertexNormal;
 
     return movedCenter + offset;
@@ -143,6 +143,8 @@ void main() {
     vec3 n1 = normalize(vNormal[1]);
     vec3 n2 = normalize(vNormal[2]);
 
+    vec3 unifiedCenterNormal = normalize(n0 + n1 + n2);
+
     // unique offset for every instance
     vec3 idOffset = vec3(float(gl_InvocationID) * 7.3, float(gl_InvocationID) * -3.1, float(gl_InvocationID) * 5.8);
     vec3 outNormal;
@@ -151,15 +153,11 @@ void main() {
     vec3 center2 = (b + c + center) / 3.0;
     vec3 center3 = (c + a + center) / 3.0;
 
-    vec3 nc1 = normalize(n0 + n1);
-    vec3 nc2 = normalize(n1 + n2);
-    vec3 nc3 = normalize(n2 + n0);
-
     gl_Position = projection * view * vec4(explode(a, center1, n0, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
     gl_Position = projection * view * vec4(explode(b, center1, n1, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
-    gl_Position = projection * view * vec4(explode(center, center1, nc1, idOffset, outNormal), 1.0);
+    gl_Position = projection * view * vec4(explode(center, center1, unifiedCenterNormal, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
     EndPrimitive();
 
@@ -167,7 +165,7 @@ void main() {
     Normal = outNormal; EmitVertex();
     gl_Position = projection * view * vec4(explode(c, center2, n2, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
-    gl_Position = projection * view * vec4(explode(center, center2, nc2, idOffset, outNormal), 1.0);
+    gl_Position = projection * view * vec4(explode(center, center2, unifiedCenterNormal, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
     EndPrimitive();
 
@@ -175,7 +173,7 @@ void main() {
     Normal = outNormal; EmitVertex();
     gl_Position = projection * view * vec4(explode(a, center3, n0, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
-    gl_Position = projection * view * vec4(explode(center, center3, nc3, idOffset, outNormal), 1.0);
+    gl_Position = projection * view * vec4(explode(center, center3, unifiedCenterNormal, idOffset, outNormal), 1.0);
     Normal = outNormal; EmitVertex();
     EndPrimitive();
 }
