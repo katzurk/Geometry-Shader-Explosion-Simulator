@@ -4,7 +4,7 @@ from typing import Any, Set
 
 import glm
 from OpenGL.GL import *  # type: ignore
-from PyQt6.QtCore import QPointF, Qt, QTimer
+from PyQt6.QtCore import QPointF, Qt, QTimer, pyqtSignal
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtWidgets import (
     QApplication,
@@ -59,9 +59,11 @@ class FloatSlider(QWidget):
         layout.addWidget(self.val_label)
 
     def set_value(self, val: float) -> None:
+        self.slider.blockSignals(True)
         ratio = (val - self.min_val) / (self.max_val - self.min_val)
         self.slider.setValue(int(ratio * 1000))
         self.val_label.setText(f"{val:.2f}")
+        self.slider.blockSignals(False)
 
     def on_value_changed(self, val: int) -> None:
         ratio = val / 1000.0
@@ -111,6 +113,8 @@ class IntSlider(QWidget):
 
 
 class GLWidget(QOpenGLWidget):
+    time_changed = pyqtSignal(float)
+
     def __init__(self, parent: Any = None):
         super().__init__(parent)
         self.camera = Camera((0.0, 0.0, 5.0))
@@ -131,12 +135,14 @@ class GLWidget(QOpenGLWidget):
         self.explosion_dir = [10.0, 2.0, 0.0]
         self.noise_strength = 0.4
         self.radial_ratio = 0.0
-        self.cycle_delay = 3.0
         self.animation_speed = 1.0
         self.fragmentation = 1
 
+        self.is_paused = True
+        self.anim_time = 0.0
+        self.anim_duration = 3.0
+
         self.last_frame_time = time.time()
-        self.elapsed_time = 0.0
         self.delta_time = 0.0
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -192,9 +198,7 @@ class GLWidget(QOpenGLWidget):
         self.shader_program.set_radial_ratio(self.radial_ratio)
         self.shader_program.set_int("u_fragmentation", self.fragmentation)
 
-        cycle_time = self.elapsed_time % 6.0
-        time_with_delay = max(0.0, cycle_time - self.cycle_delay)
-        self.shader_program.set_time(time_with_delay)
+        self.shader_program.set_time(self.anim_time)
 
         self.model.draw()
 
@@ -202,7 +206,13 @@ class GLWidget(QOpenGLWidget):
         current_time = time.time()
         self.delta_time = current_time - self.last_frame_time
         self.last_frame_time = current_time
-        self.elapsed_time += self.delta_time * self.animation_speed
+        # self.elapsed_time += self.delta_time * self.animation_speed
+        if not self.is_paused:
+            self.anim_time += self.delta_time * self.animation_speed
+            if self.anim_time >= self.anim_duration:
+                self.anim_time = self.anim_duration
+                self.is_paused = True
+            self.time_changed.emit(self.anim_time)
 
         self.process_input()
         self.update()  # trigger paintGL
@@ -259,6 +269,24 @@ class GLWidget(QOpenGLWidget):
         QCursor.setPos(self.mapToGlobal(self.rect().center()))
         self.last_mouse_pos = center
 
+    def set_anim_time(self, val):
+        self.anim_time = val
+        self.update()
+
+    def toggle_pause(self):
+        self.is_paused = not self.is_paused
+        return self.is_paused
+    
+    def trigger_explosion(self):
+        self.anim_time = 0.0
+        self.is_paused = False
+
+    def reset_explosion(self):
+        self.anim_time = 0.0
+        self.is_paused = True
+        self.time_changed.emit(self.anim_time)
+        self.update()
+
 
 class MainWindow(QMainWindow):
     def __init__(self, initial_model_path: str):
@@ -310,6 +338,36 @@ class MainWindow(QMainWindow):
         btn_reset_cam = QPushButton("Reset Camera Position")
         btn_reset_cam.clicked.connect(self.reset_camera)
         ui_layout.addWidget(btn_reset_cam)
+
+        ui_layout.addWidget(QLabel("<hr><b>Player Controls</b>"))
+        btn_layout = QHBoxLayout()
+
+        # Explode button
+        self.btn_explode = QPushButton("Explode")
+        self.btn_explode.clicked.connect(self.gl_widget.trigger_explosion)
+        self.btn_explode.clicked.connect(lambda: self.btn_play_pause.setText("Pause"))
+        btn_layout.addWidget(self.btn_explode)
+
+        # reset button
+        self.btn_reset = QPushButton("Reset")
+        self.btn_reset.clicked.connect(self.gl_widget.reset_explosion)
+        self.btn_reset.clicked.connect(lambda: self.btn_play_pause.setText("Play"))
+        btn_layout.addWidget(self.btn_reset)
+
+        # play/pause
+        self.btn_play_pause = QPushButton("Play")
+        self.btn_play_pause.clicked.connect(self.toggle_pause)
+        btn_layout.addWidget(self.btn_play_pause)
+
+        ui_layout.addLayout(btn_layout)
+
+        # timeline slider
+        self.timeline_slider = FloatSlider(
+            "Timeline", 0.0, self.gl_widget.anim_duration, self.gl_widget.anim_time, self.set_timeline
+        )
+        ui_layout.addWidget(self.timeline_slider)
+        ui_layout.addWidget(QLabel("<hr>"))
+        self.gl_widget.time_changed.connect(self.timeline_slider.set_value)
 
         ui_layout.addWidget(
             FloatSlider("Gravity", 0.0, 100.0, self.gl_widget.gravity, self.set_gravity)
@@ -392,11 +450,6 @@ class MainWindow(QMainWindow):
         )
         ui_layout.addWidget(
             FloatSlider(
-                "Cycle Delay", 0.0, 10.0, self.gl_widget.cycle_delay, self.set_delay
-            )
-        )
-        ui_layout.addWidget(
-            FloatSlider(
                 "Anim Speed", 0.0, 5.0, self.gl_widget.animation_speed, self.set_speed
             )
         )
@@ -442,14 +495,21 @@ class MainWindow(QMainWindow):
     def set_radial(self, val):
         self.gl_widget.radial_ratio = val
 
-    def set_delay(self, val):
-        self.gl_widget.cycle_delay = val
-
     def set_speed(self, val):
         self.gl_widget.animation_speed = val
 
     def set_fragmentation(self, val):
         self.gl_widget.fragmentation = val
+
+    def toggle_pause(self):
+        is_paused = self.gl_widget.toggle_pause()
+        if is_paused:
+            self.btn_play_pause.setText("Play")
+        else:
+            self.btn_play_pause.setText("Pause")
+
+    def set_timeline(self, val):
+        self.gl_widget.set_anim_time(val)
 
 
 def main() -> None:
